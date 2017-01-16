@@ -9,6 +9,7 @@ import (
 	"restic"
 	"sort"
 	"testing"
+	"time"
 
 	"restic/errors"
 	"restic/test"
@@ -583,8 +584,15 @@ func TestBackend(t testing.TB) {
 
 				test.OK(t, b.Remove(tpe, id.String()))
 
-				found, err = b.Test(tpe, id.String())
-				test.OK(t, err)
+				for i := 0; found && i < 10; i++ {
+					// Some backend (swift, I'm looking at you) may implement delayed
+					// removal of data. Let's wait a bit if this happens.
+					found, err = b.Test(tpe, id.String())
+					test.OK(t, err)
+					if found {
+						time.Sleep(100 * time.Millisecond)
+					}
+				}
 				test.Assert(t, !found, fmt.Sprintf("id %q not found after removal", id))
 			}
 		}
